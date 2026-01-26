@@ -7,31 +7,58 @@ timeWindow:
   max: P30D
 
 charts:
-  # 1) Executions over the last week (TimeSeries)
+  # 1) Executions over the last week (TimeSeries) - match default pattern (COUNT bars + DURATION line)
   - id: executions_last_week
     type: io.kestra.plugin.core.dashboard.chart.TimeSeries
     chartOptions:
       displayName: Executions (last 7 days)
-      description: Count of executions over time, grouped by state
+      description: Executions count and total duration per date, grouped by state
       legend:
         enabled: true
-      column: start_date
+      column: date
       colorByColumn: state
-      width: 12
+      width: 9
     data:
       type: io.kestra.plugin.core.dashboard.data.Executions
       columns:
-        start_date:
+        date:
           field: START_DATE
-          displayName: Start date
+          displayName: Date
         state:
           field: STATE
           displayName: State
         total:
-          field: ID
           displayName: Executions
           agg: COUNT
           graphStyle: BARS
+        duration:
+          field: DURATION
+          displayName: Duration
+          agg: SUM
+          graphStyle: LINES
+      where:
+        - type: EQUAL_TO
+          field: NAMESPACE
+          value: "gcp.ecommerce"
+
+  # 1b) Total executions by state (Pie / Donut)
+  - id: total_executions_pie
+    type: io.kestra.plugin.core.dashboard.chart.Pie
+    chartOptions:
+      displayName: Total Executions by State
+      graphStyle: DONUT
+      tooltip: ALL
+      width: 3
+    data:
+      type: io.kestra.plugin.core.dashboard.data.Executions
+      columns:
+        id:
+          field: ID
+          displayName: Executions
+          agg: COUNT
+        state:
+          field: STATE
+          displayName: State
       where:
         - type: EQUAL_TO
           field: NAMESPACE
@@ -88,25 +115,27 @@ charts:
           field: NAMESPACE
           value: "gcp.ecommerce"
 
-  # 4) Success vs Failed/Error per Flow (Bar, Counts)
-  - id: flow_failed_error_counts
+  # 4) Executions per Flow (Bar) - match default bar behavior (include state + legend)
+  - id: executions_per_flow
     type: io.kestra.plugin.core.dashboard.chart.Bar
     chartOptions:
-      displayName: Failed/Error per Flow
-      description: Failed + error executions per flow (last 7 days)
+      displayName: Executions per Flow (Success vs Failed)
+      description: Execution count per flow grouped by state (last 7 days)
+      legend:
+        enabled: true
       column: flow
       width: 9
-      legend:
-        enabled: false
     data:
       type: io.kestra.plugin.core.dashboard.data.Executions
       columns:
         flow:
           field: FLOW_ID
           displayName: Flow
+        state:
+          field: STATE
+          displayName: State
         total:
-          field: ID
-          displayName: Failed/Error
+          displayName: Executions
           agg: COUNT
       where:
         - type: EQUAL_TO
@@ -115,5 +144,5 @@ charts:
         - type: IN
           field: STATE
           values:
+            - SUCCESS
             - FAILED
-            - ERROR
