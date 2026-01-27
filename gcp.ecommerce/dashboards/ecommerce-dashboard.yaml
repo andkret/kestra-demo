@@ -7,12 +7,12 @@ timeWindow:
   max: P30D
 
 charts:
-  # 1) Executions over the last week (TimeSeries) - match default pattern (COUNT bars + DURATION line)
+  # 1) Executions over the last week (TimeSeries) - default-dashboard style (tooltip behaves better)
   - id: executions_last_week
     type: io.kestra.plugin.core.dashboard.chart.TimeSeries
     chartOptions:
       displayName: Executions (last 7 days)
-      description: Executions count and total duration per date, grouped by state
+      description: Count of executions over time, grouped by state
       legend:
         enabled: true
       column: date
@@ -31,17 +31,12 @@ charts:
           displayName: Executions
           agg: COUNT
           graphStyle: BARS
-        duration:
-          field: DURATION
-          displayName: Duration
-          agg: SUM
-          graphStyle: LINES
       where:
         - type: EQUAL_TO
           field: NAMESPACE
           value: "gcp.ecommerce"
 
-  # 1b) Total executions by state (Pie / Donut)
+  # 1b) Total executions by state (Pie / Donut) - appended
   - id: total_executions_pie
     type: io.kestra.plugin.core.dashboard.chart.Pie
     chartOptions:
@@ -115,7 +110,7 @@ charts:
           field: NAMESPACE
           value: "gcp.ecommerce"
 
-  # 4) Executions per Flow (Bar) - match default bar behavior (include state + legend)
+    # 4) Executions per Flow (Bar) - COUNT explicitly over ID (fixes bar + tooltip in 1.1.7)
   - id: executions_per_flow
     type: io.kestra.plugin.core.dashboard.chart.Bar
     chartOptions:
@@ -123,6 +118,7 @@ charts:
       description: Execution count per flow grouped by state (last 7 days)
       legend:
         enabled: true
+      tooltip: ALL
       column: flow
       width: 9
     data:
@@ -135,6 +131,7 @@ charts:
           field: STATE
           displayName: State
         total:
+          field: ID
           displayName: Executions
           agg: COUNT
       where:
