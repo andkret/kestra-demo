@@ -30,10 +30,7 @@ tasks:
     from:
       - "gs://{{ trigger.attributes.bucketId }}/{{ trigger.attributes.objectId }}"
     destinationTable: "{{ vars.project }}.{{ vars.dataset }}.pub_sub_raw"
-    format: CSV
-    autodetect: true
-    csvOptions:
-      skipLeadingRows: 1
+    format: PARQUET
     writeDisposition: WRITE_APPEND
 
 errors:
