@@ -10,6 +10,7 @@ tasks:
   # --- 1. Load RAW data from GCS into BigQuery ---
   - id: load_raw
     type: io.kestra.plugin.gcp.bigquery.LoadFromGcs
+    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
     from:
       - "gs://{{ vars.input_bucket }}/data.csv"
     destinationTable: "{{ vars.projectId }}.raw.transactions_raw"
@@ -22,6 +23,7 @@ tasks:
   # --- 2. CLEAN table: cast only important fields + business rules ---
   - id: clean_data
     type: io.kestra.plugin.gcp.bigquery.Query
+    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
     projectId: "{{ vars.projectId }}"
     location: "{{ vars.location }}"
     sql: |
@@ -43,6 +45,7 @@ tasks:
   # --- 3. ERROR table: everything that failed clean conditions ---
   - id: error_data
     type: io.kestra.plugin.gcp.bigquery.Query
+    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
     projectId: "{{ vars.projectId }}"
     location: "{{ vars.location }}"
     sql: |
