@@ -41,7 +41,7 @@ tasks:
   - id: process_raw_data
     type: io.kestra.plugin.core.flow.Subflow
     namespace: gcp.yellowcab
-    flowId: yellow_cab_bq_processing
+    flowId: yellow_cab_subflow
     wait: true
 
 
