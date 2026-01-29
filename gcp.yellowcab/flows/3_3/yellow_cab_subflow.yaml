@@ -162,5 +162,5 @@ tasks:
       SELECT *
       FROM `kestra-workspace-ak-lde-2025.YellowCab.trips_with_zone`
       WHERE trip_distance > 0
-        AND fare_amount > 0
+        AND fare_amount > 3
         AND pu_borough IS NOT NULL;
