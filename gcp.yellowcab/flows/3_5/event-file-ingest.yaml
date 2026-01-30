@@ -13,6 +13,7 @@ triggers:
     topic: "file-upload-events"
     subscription: "file-upload-sub"
     serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+    autoCreateSubscription: false
     maxRecords: 1
 
 tasks:
