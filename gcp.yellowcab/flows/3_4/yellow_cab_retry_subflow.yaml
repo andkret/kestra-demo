@@ -17,75 +17,107 @@ inputs:
     type: STRING
 
 tasks:
-    # ---------------------------------------------------------
-  # ATTEMPT 1: STRICT CLEANING -> append into final table
-  # ---------------------------------------------------------
-  - id: insert_strict
-    type: io.kestra.plugin.gcp.bigquery.Query
-    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
-    projectId: "{{ vars.project }}"
-    location: "{{ vars.location }}"
-    sql: |
-      INSERT INTO `{{ vars.project }}.{{ vars.dataset }}.yellowcab_result`
-      SELECT
-        CAST(VendorID AS INT64) AS VendorID,
-        TIMESTAMP(tpep_pickup_datetime) AS tpep_pickup_datetime,
-        TIMESTAMP(tpep_dropoff_datetime) AS tpep_dropoff_datetime,
-        SAFE_CAST(passenger_count AS INT64) AS passenger_count,
-        SAFE_CAST(trip_distance AS FLOAT64) AS trip_distance,
-        SAFE_CAST(total_amount AS FLOAT64) AS total_amount,
-        '{{ inputs.file_name }}' AS source_file,
-        '{{ inputs.ingestion_run_id }}' AS ingestion_run_id,
-        '{{ inputs.execution_run_id }}' AS execution_run_id,
-        CURRENT_TIMESTAMP() AS ingested_at
-      FROM `{{ inputs.raw_table }}`
-      WHERE SAFE_CAST(passenger_count AS INT64) IS NOT NULL;
+  # ---------------------------
+  # TRY STRICT
+  # ---------------------------
+  - id: try_strict
+    type: io.kestra.plugin.core.flow.Sequential
+    allowFailure: true
+    tasks:
+      - id: insert_strict
+        type: io.kestra.plugin.gcp.bigquery.Query
+        serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+        projectId: "{{ vars.project }}"
+        location: "{{ vars.location }}"
+        sql: |
+          INSERT INTO `{{ vars.project }}.{{ vars.dataset }}.yellowcab_result` (
+            VendorID,
+            tpep_pickup_datetime,
+            tpep_dropoff_datetime,
+            passenger_count,
+            trip_distance,
+            total_amount,
+            source_file,
+            execution_run_id,
+            ingestion_run_id,
+            ingested_at
+          )
+          SELECT
+            CAST(VendorID AS INT64),
+            TIMESTAMP(tpep_pickup_datetime),
+            TIMESTAMP(tpep_dropoff_datetime),
+            CAST(passenger_count AS INT64),
+            SAFE_CAST(trip_distance AS FLOAT64),
+            SAFE_CAST(total_amount AS FLOAT64),
+            '{{ inputs.file_name }}',
+            '{{ inputs.execution_run_id }}',
+            '{{ inputs.ingestion_run_id }}',
+            CURRENT_TIMESTAMP()
+          FROM `{{ inputs.raw_table }}`;
 
-  - id: strict_success
-    type: io.kestra.plugin.core.debug.Return
-    format: "Strict cleaning insert succeeded for {{ inputs.file_name }}"
+    errors:
+      - id: strict_failed_flag
+        type: io.kestra.plugin.core.debug.Return
+        format: "strict_failed"
 
-errors:
-  # ---------------------------------------------------------
-  # ATTEMPT 2: SOFT CLEANING -> append into final table
-  # ---------------------------------------------------------
-  - id: insert_soft
-    type: io.kestra.plugin.gcp.bigquery.Query
-    serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
-    projectId: "{{ vars.project }}"
-    location: "{{ vars.location }}"
-    sql: |
-      INSERT INTO `{{ vars.project }}.{{ vars.dataset }}.yellowcab_result`
-      WITH cleaned AS (
-        SELECT
-          CAST(VendorID AS INT64) AS VendorID,
-          TIMESTAMP(tpep_pickup_datetime) AS tpep_pickup_datetime,
-          TIMESTAMP(tpep_dropoff_datetime) AS tpep_dropoff_datetime,
+  # ---------------------------
+  # TRY SOFT (nur wenn strict failed)
+  # ---------------------------
+  - id: try_soft
+    type: io.kestra.plugin.core.flow.Sequential
+    allowFailure: true
+    runIf: "{{ outputs.strict_failed_flag is defined }}"
+    tasks:
+      - id: insert_soft
+        type: io.kestra.plugin.gcp.bigquery.Query
+        serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+        projectId: "{{ vars.project }}"
+        location: "{{ vars.location }}"
+        sql: |
+          INSERT INTO `{{ vars.project }}.{{ vars.dataset }}.yellowcab_result` (
+            VendorID,
+            tpep_pickup_datetime,
+            tpep_dropoff_datetime,
+            passenger_count,
+            trip_distance,
+            total_amount,
+            source_file,
+            execution_run_id,
+            ingestion_run_id,
+            ingested_at
+          )
+          WITH cleaned AS (
+            SELECT
+              SAFE_CAST(VendorID AS INT64) AS VendorID,
+              TIMESTAMP(tpep_pickup_datetime) AS tpep_pickup_datetime,
+              TIMESTAMP(tpep_dropoff_datetime) AS tpep_dropoff_datetime,
+              COALESCE(SAFE_CAST(passenger_count AS INT64), 1) AS passenger_count,
+              SAFE_CAST(trip_distance AS FLOAT64) AS trip_distance,
+              SAFE_CAST(total_amount AS FLOAT64) AS total_amount
+            FROM `{{ inputs.raw_table }}`
+          )
+          SELECT
+            VendorID,
+            tpep_pickup_datetime,
+            tpep_dropoff_datetime,
+            passenger_count,
+            trip_distance,
+            total_amount,
+            '{{ inputs.file_name }}',
+            '{{ inputs.execution_run_id }}',
+            '{{ inputs.ingestion_run_id }}',
+            CURRENT_TIMESTAMP()
+          FROM cleaned;
 
-          CASE
-            WHEN SAFE_CAST(passenger_count AS INT64) IS NULL THEN 1
-            ELSE SAFE_CAST(passenger_count AS INT64)
-          END AS passenger_count,
+    errors:
+      - id: soft_failed_flag
+        type: io.kestra.plugin.core.debug.Return
+        format: "soft_failed"
 
-          SAFE_CAST(trip_distance AS FLOAT64) AS trip_distance,
-          SAFE_CAST(total_amount AS FLOAT64) AS total_amount
-        FROM `{{ inputs.raw_table }}`
-      )
-      SELECT
-        VendorID,
-        tpep_pickup_datetime,
-        tpep_dropoff_datetime,
-        passenger_count,
-        trip_distance,
-        total_amount,
-        '{{ inputs.file_name }}' AS source_file,
-        '{{ inputs.ingestion_run_id }}' AS ingestion_run_id,
-        '{{ inputs.execution_run_id }}' AS execution_run_id,
-        CURRENT_TIMESTAMP() AS ingested_at
-      FROM cleaned
-      WHERE passenger_count IS NOT NULL;
-
-  - id: soft_success
-    type: io.kestra.plugin.core.debug.Return
-    format: "Soft cleaning insert succeeded for {{ inputs.file_name }}"  
-      
+  # ---------------------------
+  # FAIL nur wenn Soft auch failed
+  # ---------------------------
+  - id: fail_if_soft_also_failed
+    type: io.kestra.plugin.core.execution.Fail
+    runIf: "{{ outputs.strict_failed_flag is defined and outputs.soft_failed_flag is defined }}"
+    errorMessage: "Strict cleaning failed and soft cleaning also failed for {{ inputs.file_name }}."
