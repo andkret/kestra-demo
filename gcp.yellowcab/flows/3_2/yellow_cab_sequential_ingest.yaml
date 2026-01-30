@@ -19,7 +19,7 @@ tasks:
   - id: foreach_file
     type: io.kestra.plugin.core.flow.ForEach
     values: "{{ outputs.list_files.blobs }}"
-    concurrencyLimit: 5
+
     tasks:
       - id: load
         runIf: "{{ taskrun.value | jq('.size') | first > 0 }}"

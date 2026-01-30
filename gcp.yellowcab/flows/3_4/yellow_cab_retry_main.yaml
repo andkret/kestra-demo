@@ -27,6 +27,7 @@ tasks:
         trip_distance FLOAT64,
         total_amount FLOAT64,
         source_file STRING,
+        execution_run_id STRING,
         ingestion_run_id STRING,
         ingested_at TIMESTAMP
       );
@@ -37,6 +38,7 @@ tasks:
     tasks:
       - id: process_one_file
         type: io.kestra.plugin.core.flow.Sequential
+        allowFailure: true
         runIf: "{{ taskrun.value | jq('.size') | first > 0 }}"
         tasks:
 
@@ -71,8 +73,9 @@ tasks:
             wait: true
             inputs:
               file_name: "{{ parent.taskrun.value | jq('.name') | first | split('/') | last }}"
-              ingestion_run_id: "{{ execution.id }}"
+              execution_run_id: "{{ execution.id }}"
               raw_table: "{{ vars.project }}.{{ vars.dataset }}.raw_stage_{{ taskrun.parentId }}"
+              ingestion_run_id: "{{ taskrun.parentId }}"
 
           # ------------------------------------------------------------
           # 3) Drop per-file raw staging table after success
@@ -110,7 +113,7 @@ tasks:
             location: "{{ vars.location }}"
             sql: |
               DELETE FROM `{{ vars.project }}.{{ vars.dataset }}.yellowcab_result`
-              WHERE ingestion_run_id = '{{ execution.id }}'
+              WHERE ingestion_run_id = '{{ taskrun.parentId }}'
                 AND source_file = '{{ parent.taskrun.value | jq('.name') | first | split('/') | last }}';
 
           # ------------------------------------------------------------

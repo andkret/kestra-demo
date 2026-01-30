@@ -11,6 +11,8 @@ inputs:
     type: STRING
   - id: raw_table
     type: STRING
+  - id: execution_run_id
+    type: STRING
   - id: ingestion_run_id
     type: STRING
 
@@ -34,6 +36,7 @@ tasks:
         SAFE_CAST(total_amount AS FLOAT64) AS total_amount,
         '{{ inputs.file_name }}' AS source_file,
         '{{ inputs.ingestion_run_id }}' AS ingestion_run_id,
+        '{{ inputs.execution_run_id }}' AS execution_run_id,
         CURRENT_TIMESTAMP() AS ingested_at
       FROM `{{ inputs.raw_table }}`
       WHERE SAFE_CAST(passenger_count AS INT64) IS NOT NULL;
@@ -77,6 +80,7 @@ errors:
         total_amount,
         '{{ inputs.file_name }}' AS source_file,
         '{{ inputs.ingestion_run_id }}' AS ingestion_run_id,
+        '{{ inputs.execution_run_id }}' AS execution_run_id,
         CURRENT_TIMESTAMP() AS ingested_at
       FROM cleaned
       WHERE passenger_count IS NOT NULL;
