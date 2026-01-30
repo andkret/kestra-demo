@@ -61,7 +61,7 @@ tasks:
         format: "strict_failed"
 
   # ---------------------------
-  # TRY SOFT (nur wenn strict failed)
+  # TRY SOFT (when strict failed)
   # ---------------------------
   - id: try_soft
     type: io.kestra.plugin.core.flow.Sequential
@@ -115,7 +115,7 @@ tasks:
         format: "soft_failed"
 
   # ---------------------------
-  # FAIL nur wenn Soft auch failed
+  # FAIL only when soft failed too
   # ---------------------------
   - id: fail_if_soft_also_failed
     type: io.kestra.plugin.core.execution.Fail
