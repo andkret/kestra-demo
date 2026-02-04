@@ -1,7 +1,0 @@
-# Ignore all .env files
-.env
-*.env
-
-# Ignore all .env_encoded files
-.env_encoded
-*.env_encoded
