@@ -10,9 +10,9 @@ triggers:
 
 inputs:
   - id: make_it_fail
-    type: BOOLEAN
+    type: BOOL
     required: true
-    defaults: false
+    defaults: true
     description: "Set true to intentionally fail (Replay demo)."
 
   - id: replay_note
